@@ -760,14 +760,15 @@ public static class AdminRoutes
     }
 }
 
-file record FeedbackRow(
-    int     Id,
-    int     QuestionId,
-    string  QuestionText,
-    bool    FlagInappropriate,
-    bool    FlagDuplicate,
-    bool    FlagPoorDecoys,
-    int?    QualityRating,
-    string  Phase,
-    string? Notes
-);
+file class FeedbackRow
+{
+    public int     Id                { get; set; }
+    public int     QuestionId        { get; set; }
+    public string  QuestionText      { get; set; } = "";
+    public bool    FlagInappropriate { get; set; }
+    public bool    FlagDuplicate     { get; set; }
+    public bool    FlagPoorDecoys    { get; set; }
+    public int?    QualityRating     { get; set; }
+    public string  Phase             { get; set; } = "";
+    public string? Notes             { get; set; }
+}
