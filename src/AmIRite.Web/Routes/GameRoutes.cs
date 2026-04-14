@@ -230,10 +230,17 @@ public static class GameRoutes
 
             var categoryCheckboxes = string.Join("", categories.Select(c => $"""
                 <label class="checkbox-label">
-                  <input type="checkbox" name="categories" value="{c.Id}" id="cat-{c.Id}" />
+                  <input type="checkbox" name="categories" value="{c.Id}" id="cat-{c.Id}" checked />
                   {c.Name}
                 </label>
                 """));
+
+            var presetsSection = presets.Count > 0
+                ? $"""
+                  <p class="text-muted text-sm">Select a preset to get started, then adjust individual categories as you like.</p>
+                  <div class="preset-tiles">{presetTiles}</div>
+                  """
+                : "";
 
             var body = $"""
                 {HtmlLayout.NavBar()}
@@ -249,8 +256,12 @@ public static class GameRoutes
 
                       <div class="form-group">
                         <label>Choose question categories</label>
-                        <p class="text-muted text-sm">Select a preset to get started, then adjust individual categories as you like.</p>
-                        <div class="preset-tiles">{presetTiles}</div>
+                        {presetsSection}
+                        <div class="category-bulk-actions">
+                          <button type="button" class="btn btn-sm btn-secondary" onclick="selectAllCategories()">Select all</button>
+                          <button type="button" class="btn btn-sm btn-secondary" onclick="deselectAllCategories()">Deselect all</button>
+                          <button type="button" class="btn btn-sm btn-secondary" onclick="invertCategories()">Invert</button>
+                        </div>
                         <div class="category-checkboxes">{categoryCheckboxes}</div>
                       </div>
 
@@ -258,6 +269,26 @@ public static class GameRoutes
                     </form>
                   </div>
                 </main>
+                <script>
+                  function categoryCheckboxes() {{
+                    return document.querySelectorAll('.category-checkboxes input[type="checkbox"]');
+                  }}
+                  function selectAllCategories() {{
+                    categoryCheckboxes().forEach(cb => cb.checked = true);
+                  }}
+                  function deselectAllCategories() {{
+                    categoryCheckboxes().forEach(cb => cb.checked = false);
+                  }}
+                  function invertCategories() {{
+                    categoryCheckboxes().forEach(cb => cb.checked = !cb.checked);
+                  }}
+                  function selectPreset(btn) {{
+                    var ids = btn.dataset.catIds ? btn.dataset.catIds.split(',') : [];
+                    categoryCheckboxes().forEach(cb => cb.checked = ids.includes(cb.value));
+                    document.querySelectorAll('.preset-tile').forEach(t => t.classList.remove('selected'));
+                    btn.classList.add('selected');
+                  }}
+                </script>
                 """;
             return HtmlLayout.Page("Join game", body);
         });
