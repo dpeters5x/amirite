@@ -532,9 +532,9 @@ public static class GameRoutes
                 choices = choices.OrderBy(_ => Random.Shared.Next()).ToList();
 
                 var choiceHtml = string.Join("", choices.Select(c => $"""
-                    <label class="choice-label">
+                    <label class="answer-tile">
                       <input type="radio" name="choice_{rq.Id}" value="{c.InputValue}" required />
-                      <span class="choice-text">{c.Text}</span>
+                      <span class="answer-tile-text">{c.Text}</span>
                     </label>
                     """));
 
@@ -548,7 +548,7 @@ public static class GameRoutes
                       </div>
                       <p class="question-text">{rq.QuestionText}</p>
                       <p class="question-subtext">Which answer belongs to {opponentSp?.Nickname ?? "your opponent"}?</p>
-                      <div class="choices">{choiceHtml}</div>
+                      <div class="answer-grid">{choiceHtml}</div>
                     </div>
                     """;
             }));

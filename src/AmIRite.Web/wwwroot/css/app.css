@@ -307,23 +307,57 @@ body {
 .question-text    { font-size: var(--text-lg); font-weight: 600; margin-bottom: 0.25rem; }
 .question-subtext { font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: 0.75rem; }
 
-/* ===== Game: Choices ===== */
-.choices { display: flex; flex-direction: column; gap: 0.5rem; }
-
-.choice-label {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border: 1.5px solid var(--color-card-border);
-  border-radius: 10px;
-  cursor: pointer;
-  transition: border-color 150ms, box-shadow 150ms;
-  box-shadow: var(--shadow-card);
+/* ===== Game: Answer grid ===== */
+.answer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.625rem;
+  margin-top: 0.25rem;
 }
-.choice-label:hover { border-color: var(--color-primary); }
-.choice-label input[type="radio"] { margin-top: 2px; }
-.choice-text { font-size: var(--text-base); }
+
+.answer-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 5rem;
+  padding: 0.875rem 1rem;
+  border: 2px solid var(--color-card-border);
+  border-radius: 10px;
+  background: var(--color-bg);
+  cursor: pointer;
+  transition: border-color 150ms, background 150ms, box-shadow 150ms;
+  text-align: center;
+}
+
+.answer-tile input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.answer-tile-text {
+  font-size: var(--text-base);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.answer-tile:hover {
+  border-color: var(--color-primary);
+  background: var(--color-bg-surface);
+}
+
+.answer-tile:has(input:checked) {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary), 0 0 16px rgba(124,111,224,0.4);
+}
+
+.answer-tile:has(input:checked) .answer-tile-text {
+  color: #ffffff;
+  font-weight: 700;
+}
 
 /* ===== Game: Round header ===== */
 .round-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
