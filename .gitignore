@@ -1,0 +1,30 @@
+# .NET build artifacts
+bin/
+obj/
+*.user
+.vs/
+.idea/
+*.suo
+*.userosscache
+*.sln.docstates
+
+# SQLite databases (contain live data — never commit)
+*.db
+*.db-shm
+*.db-wal
+
+# Secrets / environment overrides (add real values to env, not git)
+appsettings.*.local.json
+secrets.json
+firebase-credentials.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# JetBrains Rider
+*.DotSettings.user
+
+# Fly.io
+fly.toml.local

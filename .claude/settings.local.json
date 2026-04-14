@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet add:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet script:*)",
+      "Bash(powershell -Command ':*)",
+      "Bash(dotnet csharp:*)"
+    ]
+  }
+}

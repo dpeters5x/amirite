@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AmIRite.Web/AmIRite.Web.csproj" />
+  </Folder>
+</Solution>
