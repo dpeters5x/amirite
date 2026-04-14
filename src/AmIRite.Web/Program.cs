@@ -4,6 +4,9 @@ using AmIRite.Web.Routes;
 using AmIRite.Web.Services;
 using AmIRite.Web.Workers;
 
+// Map snake_case DB columns to PascalCase C# properties globally
+Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // -- Configuration --
