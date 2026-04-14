@@ -1,3 +1,4 @@
+using System.Reflection;
 using AmIRite.Web.Data;
 using AmIRite.Web.Models;
 using Dapper;
@@ -186,17 +187,24 @@ public class QuestionService(IDbConnectionFactory db)
         }
     }
 
-    // -- Seed questions from the initial pool file --
+    // -- Seed questions from the embedded resource --
 
-    public async Task SeedQuestionsFromFileAsync(string filePath)
+    public async Task SeedQuestionsAsync()
     {
-        if (!File.Exists(filePath)) return;
-
         using var conn = db.Create();
         var existingCount = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM questions");
         if (existingCount > 0) return; // already seeded
 
-        var lines = await File.ReadAllLinesAsync(filePath);
+        var resourceName = Assembly.GetExecutingAssembly()
+            .GetManifestResourceNames()
+            .FirstOrDefault(n => n.EndsWith("questions-seed.txt"));
+
+        if (resourceName == null) return;
+
+        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName)!;
+        using var reader = new StreamReader(stream);
+        var content = await reader.ReadToEndAsync();
+        var lines = content.Split('\n').Select(l => l.TrimEnd('\r')).ToArray();
         var entries = ParseQuestionFile(lines);
         await BulkImportAsync(entries);
     }

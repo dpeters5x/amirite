@@ -63,14 +63,11 @@ var app = builder.Build();
 // Run migrations at startup
 Database.RunMigrations(connString);
 
-// Seed questions from file (no-op if already seeded)
+// Seed questions from embedded resource (no-op if already seeded)
 using (var scope = app.Services.CreateScope())
 {
     var questions = scope.ServiceProvider.GetRequiredService<QuestionService>();
-    var questionsFile = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "doc", "questions-2026-04-14-clean.txt");
-    if (!File.Exists(questionsFile))
-        questionsFile = Path.Combine(Directory.GetCurrentDirectory(), "..","..","doc","questions-2026-04-14-clean.txt");
-    await questions.SeedQuestionsFromFileAsync(questionsFile);
+    await questions.SeedQuestionsAsync();
 }
 
 app.UseStaticFiles();

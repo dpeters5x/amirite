@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Data\Migrations\*.sql" />
+    <EmbeddedResource Include="Data\questions-seed.txt" />
   </ItemGroup>
 
 </Project>
