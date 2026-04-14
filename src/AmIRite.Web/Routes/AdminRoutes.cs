@@ -110,9 +110,11 @@ public static class AdminRoutes
             if (RequireAdmin(ctx, admin, auth) is { } r) return r;
 
             using var conn = db.Create();
-            var feedback = await conn.QueryAsync(
+            var feedback = await conn.QueryAsync<FeedbackRow>(
                 """
-                SELECT qf.*, q.text as question_text
+                SELECT qf.id, qf.question_id, q.text AS question_text,
+                       qf.flag_inappropriate, qf.flag_duplicate, qf.flag_poor_decoys,
+                       qf.quality_rating, qf.phase, qf.notes
                 FROM question_feedback qf
                 JOIN questions q ON q.id = qf.question_id
                 WHERE qf.reviewed_at IS NULL
@@ -124,14 +126,14 @@ public static class AdminRoutes
 
             var rows = string.Join("", feedback.Select(f => $"""
                 <tr>
-                  <td>{f.question_text}</td>
-                  <td>{(f.flag_inappropriate ? "Yes" : "")}</td>
-                  <td>{(f.flag_duplicate ? "Yes" : "")}</td>
-                  <td>{f.quality_rating ?? "—"}</td>
-                  <td>{f.phase}</td>
+                  <td>{f.QuestionText}</td>
+                  <td>{(f.FlagInappropriate ? "Yes" : "")}</td>
+                  <td>{(f.FlagDuplicate ? "Yes" : "")}</td>
+                  <td>{(f.QualityRating.HasValue ? f.QualityRating.ToString() : "—")}</td>
+                  <td>{f.Phase}</td>
                   <td>
-                    <form method="post" action="/admin/questions/{f.question_id}/flag-resolution" style="display:inline">
-                      <input type="hidden" name="feedback_id" value="{f.id}" />
+                    <form method="post" action="/admin/questions/{f.QuestionId}/flag-resolution" style="display:inline">
+                      <input type="hidden" name="feedback_id" value="{f.Id}" />
                       <select name="resolution" class="input input-sm">
                         <option value="dismissed">Dismiss</option>
                         <option value="deactivated">Deactivate question</option>
@@ -757,3 +759,15 @@ public static class AdminRoutes
             """;
     }
 }
+
+file record FeedbackRow(
+    int     Id,
+    int     QuestionId,
+    string  QuestionText,
+    bool    FlagInappropriate,
+    bool    FlagDuplicate,
+    bool    FlagPoorDecoys,
+    int?    QualityRating,
+    string  Phase,
+    string? Notes
+);
