@@ -13,8 +13,6 @@ RUN mkdir -p /data
 
 COPY --from=build /app ./
 
-# ASP.NET Core respects ASPNETCORE_URLS
-ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 
 # Point the database at the persistent volume.
