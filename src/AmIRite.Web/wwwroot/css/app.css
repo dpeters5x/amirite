@@ -9,7 +9,8 @@
   --color-correct:      #22c55e;
   --color-incorrect:    #ef4444;
   --color-border:       #e2e2e2;
-  --shadow-card:        0 1px 3px rgba(0,0,0,0.08);
+  --color-card-border:  rgba(91, 79, 207, 0.22);
+  --shadow-card:        0 2px 8px rgba(91, 79, 207, 0.07), 0 1px 3px rgba(0,0,0,0.07);
   --color-warning-bg:   #fff7ed;
   --color-warning:      #c2410c;
 
@@ -32,7 +33,11 @@
   --color-correct:      #4ade80;
   --color-incorrect:    #f87171;
   --color-border:       #2e2e2e;
-  --shadow-card:        0 1px 3px rgba(0,0,0,0.4);
+  --color-card-border:  rgba(124, 111, 224, 0.5);
+  --shadow-card:        0 0 0 1px rgba(124, 111, 224, 0.1),
+                        0 4px 24px rgba(124, 111, 224, 0.18),
+                        0 2px 8px rgba(0,0,0,0.6),
+                        inset 0 1px 0 rgba(255,255,255,0.04);
   --color-warning-bg:   #1c0a00;
   --color-warning:      #fb923c;
 }
@@ -120,7 +125,7 @@ body {
 /* ===== Cards ===== */
 .card {
   background: var(--color-bg-surface);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-card-border);
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: var(--shadow-card);
@@ -267,10 +272,11 @@ body {
 /* ===== Game: Questions ===== */
 .question-card {
   background: var(--color-bg);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-card-border);
   border-radius: 10px;
   padding: 1rem;
   margin-bottom: 1rem;
+  box-shadow: var(--shadow-card);
 }
 
 .question-header {
@@ -292,10 +298,11 @@ body {
   align-items: flex-start;
   gap: 0.75rem;
   padding: 0.75rem;
-  border: 2px solid var(--color-border);
+  border: 1.5px solid var(--color-card-border);
   border-radius: 10px;
   cursor: pointer;
-  transition: border-color 150ms;
+  transition: border-color 150ms, box-shadow 150ms;
+  box-shadow: var(--shadow-card);
 }
 .choice-label:hover { border-color: var(--color-primary); }
 .choice-label input[type="radio"] { margin-top: 2px; }
@@ -325,7 +332,8 @@ body {
   padding: 1rem;
   background: var(--color-bg);
   border-radius: 10px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-card-border);
+  box-shadow: var(--shadow-card);
 }
 .score-player { display: flex; flex-direction: column; align-items: center; flex: 1; }
 .player-name  { font-size: var(--text-sm); color: var(--color-text-muted); font-weight: 700; }
@@ -354,7 +362,7 @@ body {
 .achievement-badge img { width: 48px; height: 48px; }
 
 .game-list   { display: flex; flex-direction: column; gap: 0.5rem; }
-.game-card   { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; }
+.game-card   { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: var(--color-bg); border: 1px solid var(--color-card-border); box-shadow: var(--shadow-card); border-radius: 8px; }
 .game-card-meta { flex: 1; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
 .opponent    { font-weight: 700; }
 .round-badge, .date, .score { font-size: var(--text-sm); color: var(--color-text-muted); }
@@ -383,7 +391,7 @@ body {
 .action-bar  { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
 
 .stat-grid { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-.stat-card { background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: 10px; padding: 1rem 1.5rem; display: flex; flex-direction: column; gap: 0.25rem; min-width: 140px; }
+.stat-card { background: var(--color-bg-surface); border: 1px solid var(--color-card-border); box-shadow: var(--shadow-card); border-radius: 10px; padding: 1rem 1.5rem; display: flex; flex-direction: column; gap: 0.25rem; min-width: 140px; }
 .stat-label { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); font-weight: 700; }
 .stat-value { font-size: var(--text-2xl); font-weight: 800; }
 
