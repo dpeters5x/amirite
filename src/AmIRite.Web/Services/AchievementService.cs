@@ -50,32 +50,23 @@ public class AchievementService(IDbConnectionFactory db, IEnumerable<IAchievemen
         GetPlayerAchievementsAsync(int playerId)
     {
         using var conn = db.Create();
-        var rows = await conn.QueryAsync(
-            """
-            SELECT a.id, a.key, a.name, a.description, a.icon, a.active, a.sort_order,
-                   pa.id as pa_id, pa.player_id, pa.achievement_id, pa.awarded_at, pa.awarded_by, pa.session_id
-            FROM player_achievements pa
-            JOIN achievements a ON a.id = pa.achievement_id
-            WHERE pa.player_id = @pid
-            ORDER BY a.sort_order
-            """,
-            new { pid = playerId });
 
-        return rows.Select(r => (
-            new Achievement
-            {
-                Id = (int)r.id, Key = (string)r.key, Name = (string)r.name,
-                Description = (string)r.description, Icon = (string)r.icon,
-                Active = (bool)r.active, SortOrder = (int)r.sort_order
-            },
-            new PlayerAchievement
-            {
-                Id = (int)r.pa_id, PlayerId = (int)r.player_id,
-                AchievementId = (int)r.achievement_id,
-                AwardedAt = (DateTime)r.awarded_at, AwardedBy = (string)r.awarded_by,
-                SessionId = (string?)r.session_id
-            }
-        ));
+        var awards = (await conn.QueryAsync<PlayerAchievement>(
+            "SELECT * FROM player_achievements WHERE player_id = @pid",
+            new { pid = playerId })).ToList();
+
+        if (awards.Count == 0)
+            return [];
+
+        var ids = string.Join(",", awards.Select(a => a.AchievementId).Distinct());
+        var achievementsById = (await conn.QueryAsync<Achievement>(
+            $"SELECT * FROM achievements WHERE id IN ({ids})"))
+            .ToDictionary(a => a.Id);
+
+        return awards
+            .Where(pa => achievementsById.ContainsKey(pa.AchievementId))
+            .Select(pa => (achievementsById[pa.AchievementId], pa))
+            .OrderBy(pair => pair.Item1.SortOrder);
     }
 }
 
