@@ -269,26 +269,7 @@ public static class GameRoutes
                     </form>
                   </div>
                 </main>
-                <script>
-                  function categoryCheckboxes() {{
-                    return document.querySelectorAll('.category-checkboxes input[type="checkbox"]');
-                  }}
-                  function selectAllCategories() {{
-                    categoryCheckboxes().forEach(cb => cb.checked = true);
-                  }}
-                  function deselectAllCategories() {{
-                    categoryCheckboxes().forEach(cb => cb.checked = false);
-                  }}
-                  function invertCategories() {{
-                    categoryCheckboxes().forEach(cb => cb.checked = !cb.checked);
-                  }}
-                  function selectPreset(btn) {{
-                    var ids = btn.dataset.catIds ? btn.dataset.catIds.split(',') : [];
-                    categoryCheckboxes().forEach(cb => cb.checked = ids.includes(cb.value));
-                    document.querySelectorAll('.preset-tile').forEach(t => t.classList.remove('selected'));
-                    btn.classList.add('selected');
-                  }}
-                </script>
+                <script src="/js/join.js"></script>
                 """;
             return HtmlLayout.Page("Join game", body);
         });
