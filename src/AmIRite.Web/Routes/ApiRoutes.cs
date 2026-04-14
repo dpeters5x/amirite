@@ -111,31 +111,60 @@ public static class ApiRoutes
             }
 
             await rounds.SubmitGuessesAsync(round.Id, player.Id, guessMap);
-
-            // Queue achievement evaluation
             achievements.Enqueue(player.Id, sp.SessionId);
 
-            // Refresh round
-            var refreshedRound = await rounds.GetCurrentRoundAsync(sp.SessionId);
+            var completedRound = await rounds.GetRoundByIdAsync(round.Id);
             var baseUrl = $"{ctx.Request.Scheme}://{ctx.Request.Host}";
+            var opponentId = session.Player1Id == player.Id
+                ? session.Player2Id!.Value : session.Player1Id!.Value;
 
-            if (refreshedRound?.Status == "complete")
+            if (completedRound?.Status == "complete")
             {
-                // Notify opponent
-                var opponentId = session.Player1Id == player.Id
-                    ? session.Player2Id!.Value : session.Player1Id!.Value;
                 var opponentSps = await sessions.GetSessionPlayersAsync(sp.SessionId);
-                var opponentSp = opponentSps.FirstOrDefault(s => s.PlayerId == opponentId);
+                var opponentSp2 = opponentSps.FirstOrDefault(s => s.PlayerId == opponentId);
                 var opponent = await players.GetByIdAsync(opponentId);
+                if (opponentSp2 != null && opponent != null)
+                    await notifications.NotifyRoundAdvancedAsync(opponentSp2, opponent, "", baseUrl);
 
-                if (opponentSp != null && opponent != null)
-                    await notifications.NotifyRoundAdvancedAsync(opponentSp, opponent, "", baseUrl);
-
-                // Check if game should end (final round declared or pool exhausted)
                 await CheckGameEndAsync(session, round, sp.SessionId, sessions, rounds, players, notifications, baseUrl);
             }
 
-            return Results.Redirect($"/play/{token}");
+            // Check if game ended
+            var refreshedSession = await sessions.GetByIdAsync(sp.SessionId);
+            if (refreshedSession?.Status is "finished" or "cancelled")
+                return Results.Redirect($"/results/{sp.SessionId}");
+
+            // Get/create next round eagerly so this player can start answering immediately
+            var nextRound = await rounds.GetRoundByNumberAsync(sp.SessionId, round.RoundNumber + 1);
+            if (nextRound == null)
+            {
+                try { nextRound = await rounds.CreateRoundAsync(sp.SessionId, round.RoundNumber + 1); }
+                catch (InvalidOperationException) { /* pool exhausted — game just ended */ }
+            }
+
+            refreshedSession = await sessions.GetByIdAsync(sp.SessionId);
+            if (refreshedSession?.Status is "finished" or "cancelled" || nextRound == null)
+                return Results.Redirect($"/results/{sp.SessionId}");
+
+            // Gather round results data
+            var myGuesses = (await rounds.GetGuessesForRoundAsync(round.Id))
+                .Where(g => g.GuessingPlayerId == player.Id).ToList();
+            var allAnswers = (await rounds.GetAnswersForRoundAsync(round.Id)).ToList();
+            var allDecoys  = (await rounds.GetDecoysForRoundAsync(round.Id)).ToList();
+            var nextRqs    = (await rounds.GetRoundQuestionsAsync(nextRound.Id)).ToList();
+
+            var resultsCard = GameRoutes.GuessResultsCard(
+                round.RoundNumber, rqs, myGuesses, allAnswers, allDecoys, opponentId);
+            var answeringCard = GameRoutes.AnsweringFormCard(token, nextRound, nextRqs);
+
+            var body = $"""
+                {HtmlLayout.NavBar(sp.Nickname)}
+                <main class="container">
+                  {resultsCard}
+                  {answeringCard}
+                </main>
+                """;
+            return HtmlLayout.Page($"Round {round.RoundNumber} Results", body);
         }).DisableAntiforgery();
 
         // POST /api/round/declare-final
@@ -365,14 +394,12 @@ public static class ApiRoutes
 
         if (!finalDeclared)
         {
-            // Try to create next round (this will throw if pool exhausted, causing game end)
-            try
+            // Only create next round if it doesn't already exist (may have been created eagerly)
+            var existing = await rounds.GetRoundByNumberAsync(sessionId, round.RoundNumber + 1);
+            if (existing == null)
             {
-                await rounds.CreateRoundAsync(sessionId, round.RoundNumber + 1);
-            }
-            catch (InvalidOperationException)
-            {
-                // Pool exhausted — game ended by SessionService
+                try { await rounds.CreateRoundAsync(sessionId, round.RoundNumber + 1); }
+                catch (InvalidOperationException) { /* pool exhausted — game ended by SessionService */ }
             }
         }
         else

@@ -205,6 +205,14 @@ public class RoundService(
             "SELECT * FROM rounds WHERE id = @id", new { id });
     }
 
+    public async Task<Round?> GetRoundByNumberAsync(string sessionId, int roundNumber)
+    {
+        using var conn = db.Create();
+        return await conn.QuerySingleOrDefaultAsync<Round>(
+            "SELECT * FROM rounds WHERE session_id = @sessionId AND round_number = @roundNumber",
+            new { sessionId, roundNumber });
+    }
+
     public async Task<Round?> GetCurrentRoundAsync(string sessionId)
     {
         using var conn = db.Create();

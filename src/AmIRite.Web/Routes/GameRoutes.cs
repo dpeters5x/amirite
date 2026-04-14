@@ -448,41 +448,10 @@ public static class GameRoutes
             }
 
             // Show answering form
-            var questionForms = string.Join("", rqs.Select((rq, i) =>
-            {
-                // We need the question text — fetch inline or pass it in
-                return $"""
-                    <div class="question-card" data-rq-id="{rq.Id}">
-                      <div class="question-header">
-                        <span class="question-number">Q{i + 1}</span>
-                        <button type="button" class="btn btn-sm btn-ghost feedback-btn"
-                                data-rq-id="{rq.Id}" data-question-id="{rq.QuestionId}" data-phase="answering"
-                                onclick="openFeedback(this)">Give feedback</button>
-                      </div>
-                      <p class="question-text">{rq.QuestionText}</p>
-                      <textarea name="answer_{rq.Id}" required class="input textarea"
-                                placeholder="Your answer…" rows="3"></textarea>
-                    </div>
-                    """;
-            }));
-
             return $"""
                 {HtmlLayout.NavBar(sp.Nickname)}
                 <main class="container">
-                  <form method="post" action="/api/round/answer" class="form-stack">
-                    <input type="hidden" name="token" value="{token}" />
-                    <div class="round-header">
-                      <h2>Round {round.RoundNumber}</h2>
-                    </div>
-                    {questionForms}
-                    <div class="form-group">
-                      <label class="checkbox-label">
-                        <input type="checkbox" name="declare_final" value="1" />
-                        This is my last round
-                      </label>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-block">Submit answers</button>
-                  </form>
+                  {AnsweringFormCard(token, round, rqs)}
                 </main>
                 """;
         }
@@ -600,5 +569,105 @@ public static class GameRoutes
     {
         // Placeholder — full implementation in step 10 (Round results view)
         return "<p class='text-muted'>Round history will appear here.</p>";
+    }
+
+    // -- Reusable HTML helpers --
+
+    internal static string AnsweringFormCard(string token, Round round, List<RoundQuestion> rqs)
+    {
+        var questionForms = string.Join("", rqs.Select((rq, i) => $"""
+            <div class="question-card" data-rq-id="{rq.Id}">
+              <div class="question-header">
+                <span class="question-number">Q{i + 1}</span>
+                <button type="button" class="btn btn-sm btn-ghost feedback-btn"
+                        data-rq-id="{rq.Id}" data-question-id="{rq.QuestionId}" data-phase="answering"
+                        onclick="openFeedback(this)">Give feedback</button>
+              </div>
+              <p class="question-text">{rq.QuestionText}</p>
+              <textarea name="answer_{rq.Id}" required class="input textarea"
+                        placeholder="Your answer…" rows="3"></textarea>
+            </div>
+            """));
+
+        return $"""
+            <div class="card">
+              <form method="post" action="/api/round/answer" class="form-stack">
+                <input type="hidden" name="token" value="{token}" />
+                <div class="round-header">
+                  <h2>Round {round.RoundNumber}</h2>
+                </div>
+                {questionForms}
+                <div class="form-group">
+                  <label class="checkbox-label">
+                    <input type="checkbox" name="declare_final" value="1" />
+                    This is my last round
+                  </label>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Submit answers</button>
+              </form>
+            </div>
+            """;
+    }
+
+    internal static string GuessResultsCard(
+        int roundNumber,
+        List<RoundQuestion> rqs,
+        List<Guess> myGuesses,
+        List<Answer> answers,
+        List<Decoy> decoys,
+        int opponentId)
+    {
+        var correctCount = myGuesses.Count(g => g.IsCorrect);
+
+        var items = string.Join("", rqs.Select((rq, i) =>
+        {
+            var guess = myGuesses.FirstOrDefault(g => g.RoundQuestionId == rq.Id);
+            var realAnswer = answers.FirstOrDefault(a => a.RoundQuestionId == rq.Id && a.PlayerId == opponentId);
+            var isCorrect = guess?.IsCorrect ?? false;
+            var cssClass = isCorrect ? "result-correct" : "result-wrong";
+            var icon = isCorrect ? "✓" : "✗";
+            var verdict = isCorrect ? "Correct" : "Wrong";
+
+            string chosenLine;
+            if (isCorrect)
+            {
+                chosenLine = $"""<p class="result-chosen">{realAnswer?.AnswerText ?? "—"}</p>""";
+            }
+            else
+            {
+                var chosenDecoy = guess?.ChosenDecoyId.HasValue == true
+                    ? decoys.FirstOrDefault(d => d.Id == guess.ChosenDecoyId)
+                    : null;
+                var chosenText = chosenDecoy?.DecoyText
+                    ?? (guess?.ChosenAnswerId.HasValue == true
+                        ? answers.FirstOrDefault(a => a.Id == guess.ChosenAnswerId)?.AnswerText
+                        : null)
+                    ?? "—";
+                chosenLine = $"""
+                    <p class="result-chosen">You chose: "{chosenText}"</p>
+                    <p class="result-real">Real answer: "{realAnswer?.AnswerText ?? "—"}"</p>
+                    """;
+            }
+
+            return $"""
+                <div class="result-item {cssClass}">
+                  <div class="result-verdict">
+                    <span class="verdict-icon">{icon}</span>
+                    <span class="verdict-label">{verdict}</span>
+                    <span class="question-number">Q{i + 1}</span>
+                  </div>
+                  <p class="question-text result-question">{rq.QuestionText}</p>
+                  {chosenLine}
+                </div>
+                """;
+        }));
+
+        return $"""
+            <div class="card">
+              <h2 class="round-results-title">Round {roundNumber} — Results</h2>
+              <p class="round-score-summary">You got <strong>{correctCount} of {rqs.Count}</strong> correct.</p>
+              <div class="result-list">{items}</div>
+            </div>
+            """;
     }
 }
