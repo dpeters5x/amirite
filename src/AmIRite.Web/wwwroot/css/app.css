@@ -288,6 +288,14 @@ body {
   box-shadow: var(--shadow-card);
 }
 
+.feedback-panel {
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.75rem;
+}
+.feedback-panel-inner { display: flex; flex-direction: column; gap: 0.4rem; }
+.feedback-title { font-size: var(--text-sm); font-weight: 700; margin-bottom: 0.25rem; }
+
 .question-header {
   display: flex;
   align-items: center;

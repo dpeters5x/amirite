@@ -456,7 +456,7 @@ public static class GameRoutes
                       <div class="question-header">
                         <span class="question-number">Q{i + 1}</span>
                         <button type="button" class="btn btn-sm btn-ghost feedback-btn"
-                                data-rq-id="{rq.Id}" data-phase="answering"
+                                data-rq-id="{rq.Id}" data-question-id="{rq.QuestionId}" data-phase="answering"
                                 onclick="openFeedback(this)">Give feedback</button>
                       </div>
                       <p class="question-text">{rq.QuestionText}</p>
@@ -543,7 +543,7 @@ public static class GameRoutes
                       <div class="question-header">
                         <span class="question-number">Q{i + 1}</span>
                         <button type="button" class="btn btn-sm btn-ghost feedback-btn"
-                                data-rq-id="{rq.Id}" data-phase="guessing"
+                                data-rq-id="{rq.Id}" data-question-id="{rq.QuestionId}" data-phase="guessing"
                                 onclick="openFeedback(this)">Give feedback</button>
                       </div>
                       <p class="question-text">{rq.QuestionText}</p>
