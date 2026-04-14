@@ -219,8 +219,13 @@ public class RoundService(
     public async Task<IEnumerable<RoundQuestion>> GetRoundQuestionsAsync(int roundId)
     {
         using var conn = db.Create();
-        return await conn.QueryAsync<RoundQuestion>(
-            "SELECT * FROM round_questions WHERE round_id = @rid ORDER BY sort_order", new { rid = roundId });
+        return await conn.QueryAsync<RoundQuestion>("""
+            SELECT rq.id, rq.round_id, rq.question_id, rq.sort_order, q.text AS question_text
+            FROM round_questions rq
+            JOIN questions q ON q.id = rq.question_id
+            WHERE rq.round_id = @rid
+            ORDER BY rq.sort_order
+            """, new { rid = roundId });
     }
 
     public async Task<IEnumerable<Answer>> GetAnswersForRoundAsync(int roundId)

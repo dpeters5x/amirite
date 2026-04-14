@@ -459,7 +459,7 @@ public static class GameRoutes
                                 data-rq-id="{rq.Id}" data-phase="answering"
                                 onclick="openFeedback(this)">Give feedback</button>
                       </div>
-                      <p class="question-text">Loading…</p>
+                      <p class="question-text">{rq.QuestionText}</p>
                       <textarea name="answer_{rq.Id}" required class="input textarea"
                                 placeholder="Your answer…" rows="3"></textarea>
                     </div>
@@ -546,7 +546,8 @@ public static class GameRoutes
                                 data-rq-id="{rq.Id}" data-phase="guessing"
                                 onclick="openFeedback(this)">Give feedback</button>
                       </div>
-                      <p class="question-text">Which answer belongs to {opponentSp?.Nickname ?? "your opponent"}?</p>
+                      <p class="question-text">{rq.QuestionText}</p>
+                      <p class="question-subtext">Which answer belongs to {opponentSp?.Nickname ?? "your opponent"}?</p>
                       <div class="choices">{choiceHtml}</div>
                     </div>
                     """;

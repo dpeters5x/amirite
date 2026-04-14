@@ -84,10 +84,11 @@ public class Round
 
 public class RoundQuestion
 {
-    public int Id         { get; set; }
-    public int RoundId    { get; set; }
-    public int QuestionId { get; set; }
-    public int SortOrder  { get; set; }
+    public int    Id           { get; set; }
+    public int    RoundId      { get; set; }
+    public int    QuestionId   { get; set; }
+    public int    SortOrder    { get; set; }
+    public string QuestionText { get; set; } = "";
 }
 
 public class Answer
