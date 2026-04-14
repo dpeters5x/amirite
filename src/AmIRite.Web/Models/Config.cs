@@ -36,8 +36,9 @@ public class EmailOptions
 
 public class FcmOptions
 {
-    public string ProjectId       { get; init; } = "";
-    public string CredentialsPath { get; init; } = "";
+    public string ProjectId        { get; init; } = "";
+    /// <summary>Full JSON content of the Firebase service account credentials file.</summary>
+    public string CredentialsJson  { get; init; } = "";
 }
 
 public class AdminOptions

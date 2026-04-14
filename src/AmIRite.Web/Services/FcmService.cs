@@ -9,6 +9,8 @@ public class FcmService(AppFcmOptions options, ILogger<FcmService> logger)
 {
     private FirebaseMessaging? _messaging;
 
+    private bool IsConfigured => !string.IsNullOrWhiteSpace(options.CredentialsJson);
+
     private FirebaseMessaging GetMessaging()
     {
         if (_messaging != null) return _messaging;
@@ -17,7 +19,7 @@ public class FcmService(AppFcmOptions options, ILogger<FcmService> logger)
         {
             FirebaseApp.Create(new AppOptions
             {
-                Credential = GoogleCredential.FromFile(options.CredentialsPath)
+                Credential = GoogleCredential.FromJson(options.CredentialsJson)
             });
         }
         _messaging = FirebaseMessaging.DefaultInstance;
@@ -30,7 +32,7 @@ public class FcmService(AppFcmOptions options, ILogger<FcmService> logger)
     /// </summary>
     public async Task<bool> SendAsync(string deviceToken, string title, string body)
     {
-        if (string.IsNullOrEmpty(options.CredentialsPath) || !System.IO.File.Exists(options.CredentialsPath))
+        if (!IsConfigured)
         {
             logger.LogWarning("FCM credentials not configured; skipping push notification");
             return false;

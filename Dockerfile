@@ -13,11 +13,13 @@ RUN mkdir -p /data
 
 COPY --from=build /app ./
 
-# Fly.io injects PORT; ASP.NET Core respects ASPNETCORE_URLS
+# ASP.NET Core respects ASPNETCORE_URLS
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 
-# Point the database at the persistent volume
+# Point the database at the persistent volume.
+# All other sensitive config (API keys, SMTP, FCM JSON, admin password)
+# is injected by Fly.io as environment variables via `fly secrets set`.
 ENV ConnectionStrings__DefaultConnection="Data Source=/data/amirite.db"
 
 EXPOSE 8080
