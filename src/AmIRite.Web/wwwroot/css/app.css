@@ -9,8 +9,8 @@
   --color-correct:      #22c55e;
   --color-incorrect:    #ef4444;
   --color-border:       #e2e2e2;
-  --color-card-border:  rgba(91, 79, 207, 0.22);
-  --shadow-card:        0 2px 8px rgba(91, 79, 207, 0.07), 0 1px 3px rgba(0,0,0,0.07);
+  --color-card-border:  rgba(91, 79, 207, 0.4);
+  --shadow-card:        0 4px 16px rgba(91, 79, 207, 0.14), 0 1px 4px rgba(0,0,0,0.08);
   --color-warning-bg:   #fff7ed;
   --color-warning:      #c2410c;
 
@@ -33,11 +33,11 @@
   --color-correct:      #4ade80;
   --color-incorrect:    #f87171;
   --color-border:       #2e2e2e;
-  --color-card-border:  rgba(124, 111, 224, 0.5);
-  --shadow-card:        0 0 0 1px rgba(124, 111, 224, 0.1),
-                        0 4px 24px rgba(124, 111, 224, 0.18),
-                        0 2px 8px rgba(0,0,0,0.6),
-                        inset 0 1px 0 rgba(255,255,255,0.04);
+  --color-card-border:  rgba(160, 150, 255, 0.65);
+  --shadow-card:        0 0 0 1px rgba(160, 150, 255, 0.2),
+                        0 0 40px rgba(124, 111, 224, 0.45),
+                        0 4px 16px rgba(0,0,0,0.7),
+                        inset 0 1px 0 rgba(255,255,255,0.07);
   --color-warning-bg:   #1c0a00;
   --color-warning:      #fb923c;
 }
@@ -125,7 +125,7 @@ body {
 /* ===== Cards ===== */
 .card {
   background: var(--color-bg-surface);
-  border: 1px solid var(--color-card-border);
+  border: 1.5px solid var(--color-card-border);
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: var(--shadow-card);
@@ -272,7 +272,7 @@ body {
 /* ===== Game: Questions ===== */
 .question-card {
   background: var(--color-bg);
-  border: 1px solid var(--color-card-border);
+  border: 1.5px solid var(--color-card-border);
   border-radius: 10px;
   padding: 1rem;
   margin-bottom: 1rem;
