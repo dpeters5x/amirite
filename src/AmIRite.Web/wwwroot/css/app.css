@@ -9,8 +9,8 @@
   --color-correct:      #22c55e;
   --color-incorrect:    #ef4444;
   --color-border:       #e2e2e2;
-  --color-card-border:  rgba(91, 79, 207, 0.4);
-  --shadow-card:        0 4px 16px rgba(91, 79, 207, 0.14), 0 1px 4px rgba(0,0,0,0.08);
+  --color-card-border:  #b0a8e8;
+  --shadow-card:        0 4px 20px rgba(91, 79, 207, 0.18), 0 1px 4px rgba(0,0,0,0.08);
   --color-warning-bg:   #fff7ed;
   --color-warning:      #c2410c;
 
@@ -33,9 +33,9 @@
   --color-correct:      #4ade80;
   --color-incorrect:    #f87171;
   --color-border:       #2e2e2e;
-  --color-card-border:  rgba(160, 150, 255, 0.65);
-  --shadow-card:        0 0 0 1px rgba(160, 150, 255, 0.2),
-                        0 0 40px rgba(124, 111, 224, 0.45),
+  --color-card-border:  #7c6fe0;
+  --shadow-card:        0 0 0 1px rgba(124, 111, 224, 0.35),
+                        0 0 32px rgba(124, 111, 224, 0.5),
                         0 4px 16px rgba(0,0,0,0.7),
                         inset 0 1px 0 rgba(255,255,255,0.07);
   --color-warning-bg:   #1c0a00;
@@ -98,6 +98,15 @@ body {
   flex-shrink: 0;
 }
 
+.nav-link {
+  color: var(--color-primary);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.nav-link:hover { text-decoration: underline; }
+
 .game-pebble {
   display: inline-flex;
   align-items: center;
@@ -125,7 +134,7 @@ body {
 /* ===== Cards ===== */
 .card {
   background: var(--color-bg-surface);
-  border: 1.5px solid var(--color-card-border);
+  border: 2px solid var(--color-card-border);
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: var(--shadow-card);
