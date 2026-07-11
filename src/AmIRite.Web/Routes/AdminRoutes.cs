@@ -307,6 +307,10 @@ public static class AdminRoutes
                         <button class="btn btn-secondary">Archive</button>
                       </form>
                     """ : "")}
+                    <form method="post" action="/admin/games/{sessionId}/delete" style="display:inline"
+                          onsubmit="return confirm('Permanently delete this game and all its data?')">
+                      <button class="btn btn-danger">Delete</button>
+                    </form>
                   </div>
                   <h2>Players</h2>
                   {string.Join("", sps.Select(sp =>
@@ -315,6 +319,97 @@ public static class AdminRoutes
                 """;
             return HtmlLayout.Page($"Game — Admin", body);
         });
+
+        // GET /admin/lookup-token/{token}
+        app.MapGet("/admin/lookup-token/{token}", async (
+            string token, HttpContext ctx, AdminOptions admin, AuthService auth,
+            IDbConnectionFactory db) =>
+        {
+            if (RequireAdmin(ctx, admin, auth) is { } r) return r;
+            using var conn = db.Create();
+            var row = await conn.QuerySingleOrDefaultAsync(
+                """
+                SELECT sp.token, sp.player_id, sp.nickname, p.email,
+                       s.id AS session_id, s.status
+                FROM session_players sp
+                JOIN sessions s ON s.id = sp.session_id
+                JOIN players p ON p.id = sp.player_id
+                WHERE sp.token = @token
+                """, new { token });
+
+            var html = row == null
+                ? "<p class='alert alert-error'>Token not found in session_players.</p>"
+                : $"""
+                  <table class="table"><tbody>
+                    <tr><th>Token</th><td>{row.token}</td></tr>
+                    <tr><th>Player ID</th><td>{row.player_id}</td></tr>
+                    <tr><th>Email</th><td>{row.email}</td></tr>
+                    <tr><th>Nickname</th><td>{row.nickname}</td></tr>
+                    <tr><th>Session ID</th><td><a href="/admin/games/{row.session_id}">{row.session_id}</a></td></tr>
+                    <tr><th>Session status</th><td>{row.status}</td></tr>
+                  </tbody></table>
+                  """;
+
+            return HtmlLayout.Page("Token Lookup — Admin",
+                $"{AdminNav("games")}<main class='container'><h1 class='page-title'>Token: {token[..8]}…</h1>{html}</main>");
+        });
+
+        // POST /admin/games/{sessionId}/delete — hard delete with full cascade
+        app.MapPost("/admin/games/{sessionId}/delete", async (
+            string sessionId, HttpContext ctx, AdminOptions admin, AuthService auth,
+            IDbConnectionFactory db) =>
+        {
+            if (RequireAdmin(ctx, admin, auth) is { } r) return r;
+            using var conn = db.Create();
+            using var tx = conn.BeginTransaction();
+
+            // Delete in leaf-first order (no CASCADE defined in schema)
+            await conn.ExecuteAsync(
+                """
+                DELETE FROM guesses WHERE round_question_id IN (
+                    SELECT rq.id FROM round_questions rq
+                    JOIN rounds r ON r.id = rq.round_id
+                    WHERE r.session_id = @sid)
+                """, new { sid = sessionId }, tx);
+            await conn.ExecuteAsync(
+                """
+                DELETE FROM decoys WHERE round_question_id IN (
+                    SELECT rq.id FROM round_questions rq
+                    JOIN rounds r ON r.id = rq.round_id
+                    WHERE r.session_id = @sid)
+                """, new { sid = sessionId }, tx);
+            await conn.ExecuteAsync(
+                """
+                DELETE FROM answers WHERE round_question_id IN (
+                    SELECT rq.id FROM round_questions rq
+                    JOIN rounds r ON r.id = rq.round_id
+                    WHERE r.session_id = @sid)
+                """, new { sid = sessionId }, tx);
+            await conn.ExecuteAsync(
+                """
+                DELETE FROM question_feedback WHERE session_id = @sid
+                """, new { sid = sessionId }, tx);
+            await conn.ExecuteAsync(
+                """
+                DELETE FROM round_questions WHERE round_id IN (
+                    SELECT id FROM rounds WHERE session_id = @sid)
+                """, new { sid = sessionId }, tx);
+            await conn.ExecuteAsync(
+                "DELETE FROM rounds WHERE session_id = @sid", new { sid = sessionId }, tx);
+            await conn.ExecuteAsync(
+                "DELETE FROM chat_messages WHERE session_id = @sid", new { sid = sessionId }, tx);
+            await conn.ExecuteAsync(
+                "DELETE FROM player_achievements WHERE session_id = @sid", new { sid = sessionId }, tx);
+            await conn.ExecuteAsync(
+                "DELETE FROM session_categories WHERE session_id = @sid", new { sid = sessionId }, tx);
+            await conn.ExecuteAsync(
+                "DELETE FROM session_players WHERE session_id = @sid", new { sid = sessionId }, tx);
+            await conn.ExecuteAsync(
+                "DELETE FROM sessions WHERE id = @sid", new { sid = sessionId }, tx);
+
+            tx.Commit();
+            return Results.Redirect("/admin/games");
+        }).DisableAntiforgery();
 
         // POST /admin/games/{sessionId}/end
         app.MapPost("/admin/games/{sessionId}/end", async (
@@ -703,13 +798,19 @@ public static class AdminRoutes
                     ? $"<form method='post' action='/admin/games/{s.Id}/archive' style='display:inline'><button class='btn btn-sm btn-secondary'>Archive</button></form>"
                     : "";
 
+            var deleteBtn = $"""
+                <form method="post" action="/admin/games/{s.Id}/delete" style="display:inline"
+                      onsubmit="return confirm('Permanently delete this game and all its data?')">
+                  <button class="btn btn-sm btn-danger">Delete</button>
+                </form>
+                """;
             rows.Add($"""
                 <tr>
                   <td><a href="/admin/games/{s.Id}">{s.Id[..8]}&#8230;</a></td>
                   <td>{p1?.Nickname ?? "?"} vs {p2?.Nickname ?? "?"}</td>
                   <td>{s.Status}</td>
                   <td>{s.CreatedAt:yyyy-MM-dd}</td>
-                  <td>{endBtn}{archiveBtn}</td>
+                  <td>{endBtn}{archiveBtn}{deleteBtn}</td>
                 </tr>
                 """);
         }

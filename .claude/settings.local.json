@@ -5,7 +5,9 @@
       "Bash(dotnet build:*)",
       "Bash(dotnet script:*)",
       "Bash(powershell -Command ':*)",
-      "Bash(dotnet csharp:*)"
+      "Bash(dotnet csharp:*)",
+      "Bash(fly logs:*)",
+      "Bash(flyctl logs *)"
     ]
   }
 }

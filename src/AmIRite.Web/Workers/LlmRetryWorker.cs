@@ -8,6 +8,7 @@ namespace AmIRite.Web.Workers;
 /// </summary>
 public class LlmRetryWorker(
     IServiceScopeFactory scopeFactory,
+    IConfiguration config,
     ILogger<LlmRetryWorker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken ct)
@@ -23,6 +24,7 @@ public class LlmRetryWorker(
                 var notifications = scope.ServiceProvider.GetRequiredService<NotificationService>();
                 var players = scope.ServiceProvider.GetRequiredService<PlayerService>();
 
+                var baseUrl = config["AppBaseUrl"] ?? "";
                 var pausedRounds = await rounds.GetPausedRoundsAsync();
                 foreach (var round in pausedRounds)
                 {
@@ -31,16 +33,28 @@ public class LlmRetryWorker(
                     var session = await sessions.GetByIdAsync(round.SessionId);
                     if (session == null) continue;
 
-                    // Re-run decoy generation by re-submitting answers trigger
-                    // (RoundService.SubmitAnswersAsync checks both-answered and calls GenerateDecoys)
-                    // Instead, we directly trigger decoy generation by checking answers exist
-                    // and calling a retry path. For now we mark session as active again and
-                    // let the round service re-trigger via a dummy answer check.
-                    // This will be wired properly when RoundService exposes RetryDecoysAsync.
+                    try
+                    {
+                        await rounds.RetryDecoysAsync(round.Id);
 
-                    logger.LogInformation(
-                        "LLM retry for session {SessionId} round {RoundId} — re-activating session",
-                        session.Id, round.Id);
+                        var sessionPlayers = (await sessions.GetSessionPlayersAsync(session.Id)).ToList();
+                        foreach (var sp in sessionPlayers)
+                        {
+                            var player = await players.GetByIdAsync(sp.PlayerId);
+                            if (player != null)
+                                await notifications.NotifyRoundAdvancedAsync(sp, player, "", baseUrl);
+                        }
+
+                        logger.LogInformation(
+                            "LLM retry succeeded for session {SessionId} round {RoundId}",
+                            session.Id, round.Id);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex,
+                            "LLM retry failed for session {SessionId} round {RoundId}",
+                            session.Id, round.Id);
+                    }
                 }
             }
             catch (Exception ex) when (!ct.IsCancellationRequested)

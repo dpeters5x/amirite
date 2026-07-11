@@ -216,12 +216,26 @@ public class RoundService(
     public async Task<Round?> GetCurrentRoundAsync(string sessionId)
     {
         using var conn = db.Create();
+        // Return the lowest-numbered incomplete round so premature round creation
+        // by concurrent requests cannot skip the player past the current round.
         return await conn.QuerySingleOrDefaultAsync<Round>(
             """
-            SELECT * FROM rounds WHERE session_id = @sessionId
-            ORDER BY round_number DESC LIMIT 1
+            SELECT * FROM rounds WHERE session_id = @sessionId AND status != 'complete'
+            ORDER BY round_number ASC LIMIT 1
             """,
             new { sessionId });
+    }
+
+    public async Task RetryDecoysAsync(int roundId)
+    {
+        using var conn = db.Create();
+        var tRound = await GetRoundByIdAsync(roundId)
+            ?? throw new InvalidOperationException("Round not found");
+        var tSession = await sessions.GetByIdAsync(tRound.SessionId)
+            ?? throw new InvalidOperationException("Session not found");
+
+        await sessions.SetStatusAsync(tRound.SessionId, "active");
+        await GenerateDecoysAsync(roundId, tSession);
     }
 
     public async Task<IEnumerable<RoundQuestion>> GetRoundQuestionsAsync(int roundId)

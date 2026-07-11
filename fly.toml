@@ -1,30 +1,35 @@
-app = "amirite"
-primary_region = "ord"
+# fly.toml app configuration file generated for amirite on 2026-04-13T23:45:25-04:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'amirite'
+primary_region = 'ord'
 
 [build]
 
 [env]
-  ASPNETCORE_ENVIRONMENT = "Production"
+  ASPNETCORE_ENVIRONMENT = 'Production'
+
+[[mounts]]
+  source = 'amirite_data'
+  destination = '/data'
+  initial_size = '1gb'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = "stop"
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 1
 
   [http_service.concurrency]
-    type = "connections"
+    type = 'connections'
     hard_limit = 500
     soft_limit = 400
 
 [[vm]]
-  memory = "512mb"
-  cpu_kind = "shared"
+  memory = '512mb'
+  cpu_kind = 'shared'
   cpus = 1
-
-# Persistent volume for SQLite database
-[[mounts]]
-  source = "amirite_data"
-  destination = "/data"
-  initial_size = "1gb"
+  memory_mb = 512

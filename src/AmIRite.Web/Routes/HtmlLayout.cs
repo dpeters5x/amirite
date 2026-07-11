@@ -26,7 +26,7 @@ public static class HtmlLayout
           <link rel="preconnect" href="https://fonts.googleapis.com" />
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
           <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
-          <link rel="stylesheet" href="/css/app.css" />
+          <link rel="stylesheet" href="/css/app.css?v=3" />
           <script>{ThemeScript}</script>
           {headExtras ?? ""}
         </head>
@@ -34,7 +34,7 @@ public static class HtmlLayout
           {body}
           <script src="https://unpkg.com/htmx.org@2.0.3/dist/htmx.min.js" crossorigin="anonymous"></script>
           <script src="https://unpkg.com/htmx-ext-sse@2.2.3/sse.js" crossorigin="anonymous"></script>
-          <script src="/js/app.js"></script>
+          <script src="/js/app.js?v=2"></script>
         </body>
         </html>
         """;

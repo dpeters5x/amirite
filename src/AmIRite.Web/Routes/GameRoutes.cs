@@ -280,6 +280,8 @@ public static class GameRoutes
             HttpContext ctx,
             SessionService sessions,
             QuestionService questionService,
+            PlayerService players,
+            NotificationService notifications,
             AuthService auth,
             GameOptions options) =>
         {
@@ -300,6 +302,22 @@ public static class GameRoutes
                 token, nickname, categoryIds,
                 options.CategoryWeightOneVote, options.CategoryWeightBothVotes);
 
+            // If our join activated the session, wake up the other player's waiting page via SSE
+            var tSession = await sessions.GetByIdAsync(sp.SessionId);
+            if (tSession?.Status == "active" && tSession.Player1Id.HasValue && tSession.Player2Id.HasValue)
+            {
+                var tOpponentId = tSession.Player1Id.Value == player.Id
+                    ? tSession.Player2Id.Value : tSession.Player1Id.Value;
+                var tAllSps = (await sessions.GetSessionPlayersAsync(sp.SessionId)).ToList();
+                var tOpponentSp = tAllSps.FirstOrDefault(s => s.PlayerId == tOpponentId);
+                var tOpponent = await players.GetByIdAsync(tOpponentId);
+                if (tOpponentSp != null && tOpponent != null)
+                {
+                    var tBaseUrl = $"{ctx.Request.Scheme}://{ctx.Request.Host}";
+                    await notifications.NotifyRoundAdvancedAsync(tOpponentSp, tOpponent, "", tBaseUrl);
+                }
+            }
+
             return Results.Redirect($"/play/{token}");
         }).DisableAntiforgery();
 
@@ -317,23 +335,38 @@ public static class GameRoutes
             if (player == null) return Results.Redirect($"/auth/otp?returnUrl=/play/{token}");
 
             var sp = await sessions.GetSessionPlayerByTokenAsync(token);
-            if (sp == null || sp.PlayerId != player.Id) return Results.Forbid();
+            if (sp == null)
+                return HtmlLayout.Page("Not Found", $"""
+                    {HtmlLayout.NavBar(player.Nickname)}
+                    <main class="container"><div class="card text-center">
+                      <h1 class="page-title">Game not found</h1>
+                      <p class="text-muted">This game link is no longer valid.</p>
+                      <a href="/" class="btn btn-primary">Home</a>
+                    </div></main>
+                    """);
+            if (sp.PlayerId != player.Id)
+                return Results.Redirect($"/auth/otp?returnUrl=/play/{token}");
 
             var session = await sessions.GetByIdAsync(sp.SessionId);
             if (session == null) return Results.NotFound();
 
             if (session.Status == "pending_join")
             {
-                return HtmlLayout.Page("Waiting", $"""
+                var tWaitBody = $"""
                     {HtmlLayout.NavBar(sp.Nickname)}
                     <main class="container">
                       <div class="card text-center">
                         <h1 class="page-title">Waiting for the other player…</h1>
                         <div class="spinner"></div>
-                        <div hx-ext="sse" sse-connect="/api/sse/{token}" sse-swap="round_advanced" hx-target="body"></div>
+                        <div hx-ext="sse" sse-connect="/api/sse/{token}">
+                          <div hx-get="/play/{token}" hx-trigger="sse:round_advanced" hx-target="body" hx-swap="innerHTML"></div>
+                        </div>
                       </div>
                     </main>
-                    """);
+                    """;
+                return ctx.Request.Headers.ContainsKey("HX-Request")
+                    ? Results.Content(tWaitBody, "text/html")
+                    : HtmlLayout.Page("Waiting", tWaitBody);
             }
 
             if (session.Status is "finished" or "cancelled")
@@ -341,16 +374,21 @@ public static class GameRoutes
 
             if (session.Status == "paused")
             {
-                return HtmlLayout.Page("Paused", $"""
+                var tPausedBody = $"""
                     {HtmlLayout.NavBar(sp.Nickname)}
                     <main class="container">
                       <div class="card text-center paused-notice">
                         <h1>We're having a technical issue</h1>
                         <p>Hang tight — the game will resume shortly.</p>
-                        <div hx-ext="sse" sse-connect="/api/sse/{token}" sse-swap="round_advanced" hx-target="body"></div>
+                        <div hx-ext="sse" sse-connect="/api/sse/{token}">
+                          <div hx-get="/play/{token}" hx-trigger="sse:round_advanced" hx-target="body" hx-swap="innerHTML"></div>
+                        </div>
                       </div>
                     </main>
-                    """);
+                    """;
+                return ctx.Request.Headers.ContainsKey("HX-Request")
+                    ? Results.Content(tPausedBody, "text/html")
+                    : HtmlLayout.Page("Paused", tPausedBody);
             }
 
             // Active session — get or create round 1
@@ -366,8 +404,11 @@ public static class GameRoutes
 
             var content = await RenderPlayPage(token, sp, session, round, player, opponentSp,
                 rounds, questionService, players);
+            var tChatBar = ChatBar(token);
 
-            return HtmlLayout.Page($"Round {round.RoundNumber}", content);
+            return ctx.Request.Headers.ContainsKey("HX-Request")
+                ? Results.Content(content + tChatBar, "text/html")
+                : HtmlLayout.Page($"Round {round.RoundNumber}", content + tChatBar);
         });
 
         // GET /results/{sessionId}
@@ -440,8 +481,9 @@ public static class GameRoutes
                         <h2>Round {round.RoundNumber}</h2>
                         <p class="text-muted">Waiting for {opponentSp?.Nickname ?? "your opponent"}…</p>
                         <div class="spinner"></div>
-                        <div hx-ext="sse" sse-connect="/api/sse/{token}"
-                             sse-swap="round_advanced" hx-target="body"></div>
+                        <div hx-ext="sse" sse-connect="/api/sse/{token}">
+                          <div hx-get="/play/{token}" hx-trigger="sse:round_advanced" hx-target="body" hx-swap="innerHTML"></div>
+                        </div>
                       </div>
                     </main>
                     """;
@@ -470,8 +512,9 @@ public static class GameRoutes
                         <h2>Round {round.RoundNumber}</h2>
                         <p class="text-muted">Waiting for {opponentSp?.Nickname ?? "your opponent"}…</p>
                         <div class="spinner"></div>
-                        <div hx-ext="sse" sse-connect="/api/sse/{token}"
-                             sse-swap="round_advanced" hx-target="body"></div>
+                        <div hx-ext="sse" sse-connect="/api/sse/{token}">
+                          <div hx-get="/play/{token}" hx-trigger="sse:round_advanced" hx-target="body" hx-swap="innerHTML"></div>
+                        </div>
                       </div>
                     </main>
                     """;
@@ -539,16 +582,16 @@ public static class GameRoutes
 
         if (round.Status == "complete")
         {
-            // Show round results
             return $"""
                 {HtmlLayout.NavBar(sp.Nickname)}
                 <main class="container">
-                  <div class="card">
-                    <h2>Round {round.RoundNumber} — Results</h2>
-                    <div hx-ext="sse" sse-connect="/api/sse/{token}"
-                         sse-swap="round_advanced" hx-target="body"></div>
+                  <div class="card text-center">
+                    <h2>Round {round.RoundNumber} complete</h2>
                     <p class="text-muted">Loading next round…</p>
                     <div class="spinner"></div>
+                    <div hx-ext="sse" sse-connect="/api/sse/{token}">
+                      <div hx-get="/play/{token}" hx-trigger="sse:round_advanced" hx-target="body" hx-swap="innerHTML"></div>
+                    </div>
                   </div>
                 </main>
                 """;
@@ -572,6 +615,26 @@ public static class GameRoutes
     }
 
     // -- Reusable HTML helpers --
+
+    internal static string ChatBar(string token) => $"""
+        <div class="chat-bar" id="chat-bar" hx-preserve>
+          <button class="chat-toggle-btn" id="chat-toggle" onclick="toggleChat()" type="button">
+            Chat
+            <span class="chat-unread-badge" id="chat-badge" hidden></span>
+          </button>
+        </div>
+        <div class="chat-panel" id="chat-panel" hx-preserve hidden data-token="{token}">
+          <div class="chat-panel-header">
+            <span class="chat-panel-title">Chat with your opponent</span>
+            <button class="chat-close-btn" onclick="toggleChat()" type="button">✕</button>
+          </div>
+          <div class="chat-transcript" id="chat-transcript"></div>
+          <form class="chat-input-row" onsubmit="sendChatMessage(event)">
+            <input type="text" id="chat-input" class="input" placeholder="Message…" autocomplete="off" maxlength="500" />
+            <button type="submit" class="btn btn-primary btn-sm">Send</button>
+          </form>
+        </div>
+        """;
 
     internal static string AnsweringFormCard(string token, Round round, List<RoundQuestion> rqs)
     {

@@ -29,7 +29,7 @@ public static class ApiRoutes
             var declareFinal = form["declare_final"].ToString() == "1";
 
             var sp = await sessions.GetSessionPlayerByTokenAsync(token);
-            if (sp == null || sp.PlayerId != player.Id) return Results.Forbid();
+            if (sp == null || sp.PlayerId != player.Id) return Results.StatusCode(403);
 
             var session = await sessions.GetByIdAsync(sp.SessionId);
             if (session == null) return Results.NotFound();
@@ -88,7 +88,7 @@ public static class ApiRoutes
             var token = form["token"].ToString();
 
             var sp = await sessions.GetSessionPlayerByTokenAsync(token);
-            if (sp == null || sp.PlayerId != player.Id) return Results.Forbid();
+            if (sp == null || sp.PlayerId != player.Id) return Results.StatusCode(403);
 
             var session = await sessions.GetByIdAsync(sp.SessionId);
             if (session == null) return Results.NotFound();
@@ -118,23 +118,26 @@ public static class ApiRoutes
             var opponentId = session.Player1Id == player.Id
                 ? session.Player2Id!.Value : session.Player1Id!.Value;
 
-            if (completedRound?.Status == "complete")
+            if (completedRound?.Status != "complete")
             {
-                var opponentSps = await sessions.GetSessionPlayersAsync(sp.SessionId);
-                var opponentSp2 = opponentSps.FirstOrDefault(s => s.PlayerId == opponentId);
-                var opponent = await players.GetByIdAsync(opponentId);
-                if (opponentSp2 != null && opponent != null)
-                    await notifications.NotifyRoundAdvancedAsync(opponentSp2, opponent, "", baseUrl);
-
-                await CheckGameEndAsync(session, round, sp.SessionId, sessions, rounds, players, notifications, baseUrl);
+                // First player to guess — wait for opponent
+                return Results.Redirect($"/play/{token}");
             }
 
-            // Check if game ended
+            // Both players have now guessed — notify opponent, check game end, create next round
+            var tOpponentSps = await sessions.GetSessionPlayersAsync(sp.SessionId);
+            var tOpponentSp = tOpponentSps.FirstOrDefault(s => s.PlayerId == opponentId);
+            var tOpponent = await players.GetByIdAsync(opponentId);
+            if (tOpponentSp != null && tOpponent != null)
+                await notifications.NotifyRoundAdvancedAsync(tOpponentSp, tOpponent, "", baseUrl);
+
+            await CheckGameEndAsync(session, round, sp.SessionId, sessions, rounds, players, notifications, baseUrl);
+
             var refreshedSession = await sessions.GetByIdAsync(sp.SessionId);
             if (refreshedSession?.Status is "finished" or "cancelled")
                 return Results.Redirect($"/results/{sp.SessionId}");
 
-            // Get/create next round eagerly so this player can start answering immediately
+            // Eagerly create next round so this player can start answering immediately
             var nextRound = await rounds.GetRoundByNumberAsync(sp.SessionId, round.RoundNumber + 1);
             if (nextRound == null)
             {
@@ -146,7 +149,7 @@ public static class ApiRoutes
             if (refreshedSession?.Status is "finished" or "cancelled" || nextRound == null)
                 return Results.Redirect($"/results/{sp.SessionId}");
 
-            // Gather round results data
+            // Show round results + next round answering form
             var myGuesses = (await rounds.GetGuessesForRoundAsync(round.Id))
                 .Where(g => g.GuessingPlayerId == player.Id).ToList();
             var allAnswers = (await rounds.GetAnswersForRoundAsync(round.Id)).ToList();
@@ -156,6 +159,7 @@ public static class ApiRoutes
             var resultsCard = GameRoutes.GuessResultsCard(
                 round.RoundNumber, rqs, myGuesses, allAnswers, allDecoys, opponentId);
             var answeringCard = GameRoutes.AnsweringFormCard(token, nextRound, nextRqs);
+            var tChatBar = GameRoutes.ChatBar(token);
 
             var body = $"""
                 {HtmlLayout.NavBar(sp.Nickname)}
@@ -163,6 +167,7 @@ public static class ApiRoutes
                   {resultsCard}
                   {answeringCard}
                 </main>
+                {tChatBar}
                 """;
             return HtmlLayout.Page($"Round {round.RoundNumber} Results", body);
         }).DisableAntiforgery();
@@ -179,7 +184,7 @@ public static class ApiRoutes
             var form = await ctx.Request.ReadFormAsync();
             var token = form["token"].ToString();
             var sp = await sessions.GetSessionPlayerByTokenAsync(token);
-            if (sp == null || sp.PlayerId != player.Id) return Results.Forbid();
+            if (sp == null || sp.PlayerId != player.Id) return Results.StatusCode(403);
 
             // Declaration is handled during answer submission — this endpoint
             // exists for explicit out-of-band declarations if needed.
@@ -199,7 +204,7 @@ public static class ApiRoutes
             var form = await ctx.Request.ReadFormAsync();
             var token = form["token"].ToString();
             var sp = await sessions.GetSessionPlayerByTokenAsync(token);
-            if (sp == null || sp.PlayerId != player.Id) return Results.Forbid();
+            if (sp == null || sp.PlayerId != player.Id) return Results.StatusCode(403);
 
             var rqId = int.TryParse(form["rq_id"], out var r) ? (int?)r : null;
             var questionId = int.Parse(form["question_id"].ToString());
@@ -333,7 +338,7 @@ public static class ApiRoutes
             var message = form["message"].ToString().Trim();
 
             var sp = await sessions.GetSessionPlayerByTokenAsync(token);
-            if (sp == null || sp.PlayerId != player.Id) return Results.Forbid();
+            if (sp == null || sp.PlayerId != player.Id) return Results.StatusCode(403);
 
             if (!rateLimiter.IsAllowed($"chat:{token}", 10, TimeSpan.FromMinutes(1)))
                 return Results.StatusCode(429);
@@ -342,14 +347,22 @@ public static class ApiRoutes
 
             using var conn = db.Create();
             await conn.ExecuteAsync(
-                "INSERT INTO chat_messages (session_id, sender_id, message_text) VALUES (@sid, @pid, @msg)",
-                new { sid = sp.SessionId, pid = player.Id, msg = message });
+                "INSERT INTO chat_messages (session_id, sender_id, message_text, sent_at) VALUES (@sid, @pid, @msg, @now)",
+                new { sid = sp.SessionId, pid = player.Id, msg = message, now = DateTime.UtcNow });
 
-            // Push chat update to all players in session via SSE
+            // Push styled bubble to the opponent via SSE (sender sees it via history reload)
             var sessionPlayers = await sessions.GetSessionPlayersAsync(sp.SessionId);
-            var chatHtml = $"""<div class="chat-message"><strong>{sp.Nickname}</strong> {message}</div>""";
+            var tBubbleHtml = $"""
+                <div class="chat-bubble chat-bubble-other">
+                  <span class="chat-bubble-sender">{sp.Nickname ?? "Opponent"}</span>
+                  <span class="chat-bubble-text">{message}</span>
+                </div>
+                """;
             foreach (var s in sessionPlayers)
-                await sse.SendEventAsync(s.Token, "chat_message", chatHtml);
+            {
+                if (s.PlayerId != player.Id)
+                    await sse.SendEventAsync(s.Token, "chat_message", tBubbleHtml);
+            }
 
             return Results.Ok();
         }).DisableAntiforgery();
@@ -367,7 +380,7 @@ public static class ApiRoutes
             var form = await ctx.Request.ReadFormAsync();
             var token = form["token"].ToString();
             var sp = await sessions.GetSessionPlayerByTokenAsync(token);
-            if (sp == null || sp.PlayerId != player.Id) return Results.Forbid();
+            if (sp == null || sp.PlayerId != player.Id) return Results.StatusCode(403);
 
             using var conn = db.Create();
             await conn.ExecuteAsync(
@@ -379,6 +392,59 @@ public static class ApiRoutes
 
             return Results.Ok();
         }).DisableAntiforgery();
+
+        // GET /api/chat/history/{token}
+        app.MapGet("/api/chat/history/{token}", async (
+            string token,
+            HttpContext ctx,
+            AuthService auth,
+            SessionService sessions,
+            IDbConnectionFactory db) =>
+        {
+            var player = await auth.GetPlayerFromCookieAsync(ctx);
+            if (player == null) return Results.Unauthorized();
+
+            var sp = await sessions.GetSessionPlayerByTokenAsync(token);
+            if (sp == null || sp.PlayerId != player.Id) return Results.StatusCode(403);
+
+            using var conn = db.Create();
+            var tRows = (await conn.QueryAsync(
+                """
+                SELECT cm.sender_id, cm.message_text, cm.sent_at, sp.nickname
+                FROM chat_messages cm
+                JOIN session_players sp ON sp.session_id = cm.session_id AND sp.player_id = cm.sender_id
+                WHERE cm.session_id = @sid
+                ORDER BY cm.sent_at
+                """,
+                new { sid = sp.SessionId })).ToList();
+
+            if (tRows.Count == 0)
+                return Results.Content("""<p class="chat-empty">No messages yet — say hi!</p>""", "text/html");
+
+            var tHtml = string.Join("", tRows.Select(m =>
+            {
+                var tIsOwn = (long)m.sender_id == player.Id;
+                var tClass = tIsOwn ? "chat-bubble-own" : "chat-bubble-other";
+                var tSentAt = ((string?)m.sent_at?.ToString() ?? "");
+                var tTime = tSentAt.Length >= 16 ? tSentAt[11..16] : "";
+                return tIsOwn
+                    ? $"""
+                       <div class="chat-bubble {tClass}">
+                         <span class="chat-bubble-text">{m.message_text}</span>
+                         <span class="chat-bubble-time">{tTime}</span>
+                       </div>
+                       """
+                    : $"""
+                       <div class="chat-bubble {tClass}">
+                         <span class="chat-bubble-sender">{m.nickname}</span>
+                         <span class="chat-bubble-text">{m.message_text}</span>
+                         <span class="chat-bubble-time">{tTime}</span>
+                       </div>
+                       """;
+            }));
+
+            return Results.Content(tHtml, "text/html");
+        });
     }
 
     private static async Task CheckGameEndAsync(
