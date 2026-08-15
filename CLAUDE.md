@@ -75,3 +75,9 @@ In production, secrets are set via `flyctl secrets set`. Keys: `Llm:AnthropicApi
 ## Spec Document
 
 `doc/AmIRite-Spec.md` is the authoritative 1,000+ line game design spec. Consult it for feature requirements, scoring rules, achievement definitions, and UI behavior.
+
+---
+
+## Portfolio
+
+This project's portfolio slug is `am-i-rite`.
