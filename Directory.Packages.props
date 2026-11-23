@@ -1,0 +1,15 @@
+<Project>
+
+  <!-- Central package management: versions live here; projects reference packages without a Version. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="Anthropic.SDK" Version="5.10.0" />
+    <PackageVersion Include="Dapper" Version="2.1.72" />
+    <PackageVersion Include="FirebaseAdmin" Version="3.5.0" />
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="11.0.0" />
+  </ItemGroup>
+
+</Project>
