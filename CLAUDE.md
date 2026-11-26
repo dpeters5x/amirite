@@ -17,7 +17,7 @@ dotnet run --project src/AmIRite.Web
 # Build
 dotnet build
 
-# Deploy (CI via GitHub Actions on push to main)
+# Deploy (manual; app is currently suspended on Fly)
 flyctl deploy --remote-only
 ```
 
